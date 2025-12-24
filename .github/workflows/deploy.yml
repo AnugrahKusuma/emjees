@@ -1,0 +1,41 @@
+name: Deploy Emjees Website
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Server
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+            set -e
+
+            echo "Masuk ke folder project"
+            cd /var/www/emjees
+
+            echo "Fix git safe directory"
+            git config --global --add safe.directory /var/www/emjees
+
+            echo "Pull update dari repository"
+            git pull origin main
+
+            echo "Reload nginx"
+            sudo -n systemctl reload nginx
+
+            echo "Deploy selesai"
+          EOF
